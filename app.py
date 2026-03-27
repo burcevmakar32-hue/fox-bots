@@ -1,6 +1,10 @@
 from flask import Flask
 import os
 
+FOXY_SERVICE_ID = "НОВЫЙ_ID_СЕРВИСА"   # вставь сюда новый ID
+FOXY_SECRET_KEY = "95ef5c3a12ea8616f769e6490ee84f740d31a637201a6d5d"
+FOXY_BOT_LINK = "https://t.me/foxcoingame_bot/app"
+
 app = Flask(__name__)
 
 @app.route('/')
