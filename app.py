@@ -8,16 +8,16 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # === КОНФИГУРАЦИЯ (берём из переменных окружения) ===
-BOT_TOKEN = os.environ.get("8743642269:AAGaXTL80peI1yBQh7XzTCXum2GWOS1fE_4")                     # токен Telegram бота
-FOXY_SERVICE_ID = os.environ.get("6b95aa398861")         # ID твоего сервиса Foxy
-FOXY_SECRET_KEY = os.environ.get("95ef5c3a12ea8616f769e6490ee84f740d31a637201a6d5d")         # секретный ключ (95ef5c3a...)
-FOXY_BOT_LINK = "https://t.me/foxcoingame_bot/app"          # ссылка на приложение Foxy
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
+FOXY_SERVICE_ID = os.environ.get("FOXY_SERVICE_ID")
+FOXY_SECRET_KEY = os.environ.get("FOXY_SECRET_KEY")
+FOXY_BOT_LINK = "https://t.me/foxcoingame_bot/app"
 
 # === ИНИЦИАЛИЗАЦИЯ ===
 bot = telebot.TeleBot(BOT_TOKEN)
 app = Flask(__name__)
 
-# === ПРОСТАЯ БАЗА ДАННЫХ (JSON-файл) ===
+# === БАЗА ДАННЫХ ===
 DB_FILE = "users.json"
 
 def load_users():
@@ -30,12 +30,11 @@ def save_users(users):
     with open(DB_FILE, "w") as f:
         json.dump(users, f)
 
-# === ОТПРАВКА УВЕДОМЛЕНИЙ В TELEGRAM (через API) ===
 def send_notification(chat_id, text):
     try:
         bot.send_message(chat_id, text)
     except Exception as e:
-        logging.error(f"Ошибка отправки сообщения: {e}")
+        logging.error(f"Ошибка отправки: {e}")
 
 # === КОМАНДЫ БОТА ===
 @bot.message_handler(commands=['start'])
@@ -57,7 +56,6 @@ def balance(message):
 @bot.message_handler(commands=['shop'])
 def shop(message):
     user_id = message.chat.id
-    # Сумма товара — 100 FC
     price = 100
     startapp = f"service_{FOXY_SERVICE_ID}__user_{user_id}__sum_{price}__lock_1"
     payment_url = f"{FOXY_BOT_LINK}?startapp={startapp}&topup_sum={price}&topup_lock=1"
@@ -66,10 +64,9 @@ def shop(message):
     keyboard.add(InlineKeyboardButton("💎 Купить 100 FC", url=payment_url))
     bot.reply_to(message, "🛒 Магазин:\n100 FC = 100 единиц", reply_markup=keyboard)
 
-# === ОБРАБОТЧИК CALLBACK ОТ FOXY COMPANY ===
+# === ОБРАБОТЧИК CALLBACK ОТ FOXY ===
 @app.route('/callback', methods=['POST'])
 def callback():
-    # Получаем данные в формате JSON
     data = request.get_json()
     if not data:
         logging.warning("Callback: нет JSON")
@@ -77,22 +74,19 @@ def callback():
 
     logging.info(f"Callback получен: {data}")
 
-    # Ожидаем, что Foxy пришлёт поля: tx_id, user_id, amount, sign
     tx_id = data.get('tx_id')
     user_id = data.get('user_id')
     amount = data.get('amount')
     sign = data.get('sign')
 
     if not all([tx_id, user_id, amount, sign]):
-        logging.warning("Не хватает полей в callback")
+        logging.warning("Не хватает полей")
         return jsonify({'error': 'Missing fields'}), 400
 
-    # Приводим типы
     user_id = str(user_id)
     amount = int(amount)
 
-    # Проверка подписи (HMAC-SHA256)
-    # Формируем строку для подписи: tx_id:user_id:amount
+    # Проверка подписи
     message = f"{tx_id}:{user_id}:{amount}"
     expected_sign = hmac.new(
         FOXY_SECRET_KEY.encode(),
@@ -104,37 +98,33 @@ def callback():
         logging.error(f"Неверная подпись для tx {tx_id}")
         return jsonify({'error': 'Invalid signature'}), 403
 
-    # Проверяем, не обработана ли уже эта транзакция
-    users = load_users()
-    # Для простоты будем хранить список обработанных tx в отдельном файле или в users.json
-    # Добавим поле processed_tx в users (или отдельный файл)
+    # Проверяем, не обработана ли транзакция
     processed_file = "processed_tx.json"
     if os.path.exists(processed_file):
         with open(processed_file, "r") as f:
             processed = json.load(f)
     else:
         processed = []
+
     if tx_id in processed:
         logging.info(f"Транзакция {tx_id} уже обработана")
         return jsonify({'status': 'already processed'}), 200
 
     # Начисляем баланс
+    users = load_users()
     if user_id not in users:
         users[user_id] = {"balance": 0}
     users[user_id]['balance'] = users[user_id].get('balance', 0) + amount
     save_users(users)
 
-    # Сохраняем ID транзакции
     processed.append(tx_id)
     with open(processed_file, "w") as f:
         json.dump(processed, f)
 
-    # Отправляем пользователю уведомление в Telegram
-    send_notification(user_id, f"✅ Оплата на сумму {amount} FC получена! Баланс пополнен.")
-
+    send_notification(user_id, f"✅ Оплата {amount} FC получена! Баланс пополнен.")
     return jsonify({'status': 'ok'}), 200
 
-# === ВЕБХУК ДЛЯ TELEGRAM (принимает обновления) ===
+# === ВЕБХУК ДЛЯ TELEGRAM ===
 @app.route('/webhook', methods=['POST'])
 def webhook():
     json_str = request.get_data().decode('UTF-8')
@@ -147,7 +137,6 @@ def webhook():
 def index():
     return "✅ Bot is running!"
 
-# === ЗАПУСК ===
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
