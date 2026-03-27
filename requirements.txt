@@ -1,4 +1,0 @@
-Flask==2.2.2
-pyTelegramBotAPI==4.10.0
-gunicorn==20.1.0
-setuptools
