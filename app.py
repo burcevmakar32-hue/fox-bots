@@ -8,9 +8,9 @@ import telebot
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 # === КОНФИГУРАЦИЯ (берём из переменных окружения) ===
-BOT_TOKEN = os.environ.get("BOT_TOKEN")                     # токен Telegram бота
-FOXY_SERVICE_ID = os.environ.get("FOXY_SERVICE_ID")         # ID твоего сервиса Foxy
-FOXY_SECRET_KEY = os.environ.get("FOXY_SECRET_KEY")         # секретный ключ (95ef5c3a...)
+BOT_TOKEN = os.environ.get("8743642269:AAGaXTL80peI1yBQh7XzTCXum2GWOS1fE_4")                     # токен Telegram бота
+FOXY_SERVICE_ID = os.environ.get("6b95aa398861")         # ID твоего сервиса Foxy
+FOXY_SECRET_KEY = os.environ.get("95ef5c3a12ea8616f769e6490ee84f740d31a637201a6d5d")         # секретный ключ (95ef5c3a...)
 FOXY_BOT_LINK = "https://t.me/foxcoingame_bot/app"          # ссылка на приложение Foxy
 
 # === ИНИЦИАЛИЗАЦИЯ ===
